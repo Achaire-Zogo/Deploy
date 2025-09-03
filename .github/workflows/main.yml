@@ -1,0 +1,61 @@
+name: Auto-Deploy with Nginx
+on:
+  push:
+    branches: [main]
+
+env:
+  APP_DIR: "/var/www/html/Deploy"
+  SERVER_IP: ${{ secrets.SERVER_IP }}
+  SSH_USER: ${{ secrets.SSH_USER }}
+  SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
+
+      - name: Deploy updated files
+        run: |
+          cat << EOF | ssh $SSH_USER@$SERVER_IP "sudo bash"
+          # Crée le répertoire s'il n'existe pas
+          mkdir -p $APP_DIR
+          
+          # Supprime les anciens fichiers à l'intérieur
+          rm -rf $APP_DIR/*
+          EOF
+
+          # Synchronise les fichiers locaux vers le serveur
+          rsync -avz --delete \
+            --exclude=.git \
+            ./ $SSH_USER@$SERVER_IP:$APP_DIR
+
+      - name: Deploy updated Deploy files
+        run: |
+          cat << EOF | ssh $SSH_USER@$SERVER_IP "sudo bash"
+            # Se placer dans le répertoire de l'application
+            cd $APP_DIR
+
+            # Vérifie que docker et docker-compose sont disponibles
+            if ! command -v docker >/dev/null; then
+              echo "Docker n'est pas installé !"
+              exit 1
+            fi
+            if ! command -v docker-compose >/dev/null; then
+              echo "Docker Compose n'est pas installé !"
+              exit 1
+            fi
+
+            # Relance Docker Compose de manière sécurisée
+            docker compose down
+            docker compose pull
+            docker compose up -d --build
+          EOF
