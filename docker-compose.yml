@@ -1,0 +1,14 @@
+services:
+  service-user:
+    restart: always
+    build: .
+    ports:
+      - 5010:5010
+    env_file:
+      - .env.docker
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+
+
