@@ -63,3 +63,7 @@ pip install -r requirements-dev.txt
 ## Licence
 
 MIT
+
+
+ls ~/.ssh
+cat ~/.ssh/id_rsa

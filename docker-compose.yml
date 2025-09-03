@@ -1,5 +1,7 @@
 services:
-  service-user:
+  service-sante:
+    image: service-sante
+    container_name: service-sante
     restart: always
     build: .
     ports:
